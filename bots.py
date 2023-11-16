@@ -4,27 +4,46 @@ import time
 
 f = open('inventory.dat', 'r')
 file_contents = json.load(f)
+f.close()
 
 def bot_clerk(list):
     cart = []
-    lock = threading.Lock()
-    robot_fetchers = [[],[],[]]
+    robot_fetchers = [threading.Lock(),threading.Lock(),threading.Lock()]
     f_list = []
 
-    for i in range(len(list)):
-        robot_fetchers[i%3].append([list[i], file_contents[list[i]][0], file_contents[list[i]][1]])
-    for lists in robot_fetchers:
-        ff_list = threading.Thread(target=bot_fetcher, args=(lists, cart, lock))
+    def get_item(bot, item):
+        with robot_fetchers[bot]:
+            time.sleep(file_contents[item][1])
+            cart.append([item, file_contents[item][0]])
+
+    for i, id in enumerate(list):
+        ff_list = threading.Thread(target=get_item, args=(i%3, id))
         f_list.append(ff_list)
-        ff_list.start()
-    for ff_list in f_list:
-        ff_list.join()
+        
+    for f in f_list:
+        f.start()
+
+    for f in f_list:
+        f.join()
 
     return cart
 
 def bot_fetcher(items, cart, lock):
-    for i in items:
-        time.sleep(file_contents[i][1])
+    f_list = []
+
+    def get_item(bot, item):
         with lock:
-            cart.append([i, file_contents[i][0]])
+            cart.append([item, file_contents[item][0]])
+
+    for i, id in enumerate(list):
+        ff_list = threading.Thread(target=get_item, args=(i%3+1, id))
+        f_list.append(ff_list)
+
+    for f in f_list:
+        f.start()
+
+    for f in f_list:
+        f.join()
+
+    return cart
 
